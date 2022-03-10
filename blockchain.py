@@ -323,8 +323,14 @@ class Blockchain:
             try:
                 response = requests.get(f"http://{node}/api/chain")
                 peer_chain = response.json()
-                converted_peer_cahin = [Block(block["index"], block["previous_hash"], [Transaction(
-                    t["sender"], t["recepient"], t["signature"], t["amount"]) for t in block["transactions"]], block["proof"], block["timestamp"]) for block in peer_chain]
+                converted_peer_cahin = [Block(block["index"],
+                                              block["previous_hash"],
+                                              [Transaction(t["sender"],
+                                                           t["recepient"],
+                                                           t["signature"],
+                                                           t["amount"]) for t in block["transactions"]],
+                                              block["proof"],
+                                              block["timestamp"]) for block in peer_chain]
 
                 # compare length of peer's chain to the local one | verify that peer's chain is valid
                 len_converted_peer_chain = len(converted_peer_cahin)
