@@ -177,11 +177,17 @@ def broadcast_block():
             response = {
                 "message": "Block seems invalid"
             }
-            return jsonify(response), 500
+            return jsonify(response), 409
 
     elif passed_data["block"]["index"] > blockchain.get_chain()[-1].index:
-        pass
+        # our blockchain is shorter
+        response = {
+            "message": "Blockchain seems different, needs resolving"
+        }
+        blockchain.resolve_conflicts = True
+        return jsonify(response), 200
     else:
+        # sender's blockchain is shorter than peer. We have a longer blockchain.
         response = {
             "message": "Blockchain seems to be shorter, block not added."
         }
@@ -197,6 +203,12 @@ def get_open_transactions():
 
 @my_flask_app.route("/api/mine", methods=["POST"])
 def mine():
+    if blockchain.resolve_conflicts:
+        response = {
+            "message": "Resolve conflicts first, block not added!"
+        }
+        return jsonify(response), 409
+
     block = blockchain.mine_block()
 
     if block != None:
@@ -215,6 +227,21 @@ def mine():
             "wallet_set_up": blockchain.hosting_node_id != None
         }
         return (jsonify(response), 500)
+
+
+@my_flask_app.route("/api/resolve", methods=["POST"])
+def resolve():
+    # check result of resolve logic
+    replaced = blockchain.resolve()
+    if replaced:
+        response = {
+            "message": "Blockchain replaced successfully"
+        }
+    else:
+        response = {
+            "message": "Blockchain kept"
+        }
+    return jsonify(response), 200
 
 
 @my_flask_app.route("/api/chain", methods=["GET"])

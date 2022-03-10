@@ -19,6 +19,7 @@ class Blockchain:
         self.__open_transactions = []
         self.__peer_nodes = set()
         self.node_port = node_port
+        self.resolve_conflicts = False
         self.load_data()
 
     def get_chain(self):
@@ -252,6 +253,8 @@ class Blockchain:
                     f"http://{node}/api/broadcast-block", json={"block": converted_block})
                 if response.status_code == 409 or response.status_code == 500:
                     print("Block declined, needs resolving")
+                if response.status_code == 409:
+                    self.resolve_conflicts = True
             except requests.exceptions.ConnectionError:
                 continue
 
@@ -308,3 +311,37 @@ class Blockchain:
 
         self.save_data()
         return True
+
+    # method for resolving conflicts
+    def resolve(self):
+        # variable to track the longest chain. At the start, the "winning" chain is ofcourse the local one since we are not yet aware of peer's chain
+        winning_chain = self.__chain
+        replace = False
+
+        # get copy of blochchain from peers
+        for node in self.__peer_nodes:
+            try:
+                response = requests.get(f"http://{node}/api/chain")
+                peer_chain = response.json()
+                converted_peer_cahin = [Block(block["index"], block["previous_hash"], [Transaction(
+                    t["sender"], t["recepient"], t["signature"], t["amount"]) for t in block["transactions"]], block["proof"], block["timestamp"]) for block in peer_chain]
+
+                # compare length of peer's chain to the local one | verify that peer's chain is valid
+                len_converted_peer_chain = len(converted_peer_cahin)
+                len_local_chain = len(winning_chain)
+
+                if len_converted_peer_chain > len_local_chain and Verification.verify_blockchain(converted_peer_cahin):
+                    # override local blockchain with peer's blockchain
+                    winning_chain = converted_peer_cahin
+                    replace = True
+            except requests.exceptions.ConnectionError:
+                # skip to the next node in the loop
+                continue
+
+        self.resolve_conflicts = False
+        self.__chain = winning_chain
+        if replace:
+            self.__open_transactions = []
+        self.save_data()
+
+        return replace
