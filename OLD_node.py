@@ -86,7 +86,7 @@ class Node:
 """built in __name__ variable
 
 this variable holds the name of the files(a.k.a modules) that are executed (even imports)
-if we run node.py, it will be given the name __main__
+if we run node.py, it will be given the name "__main__"
 therefore if we can control some part of code to only execute based on the value of __name__
 
 """
